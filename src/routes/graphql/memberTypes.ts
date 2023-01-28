@@ -3,12 +3,22 @@ import {
   GraphQLList,
   GraphQLString,
   GraphQLInt,
+  GraphQLInputObjectType,
+  GraphQLNonNull,
 } from 'graphql';
 
 const memberTypeType = new GraphQLObjectType({
   name: 'memberType',
   fields: () => ({
     id: { type: GraphQLString },
+    discount: { type: GraphQLInt },
+    monthPostsLimit: { type: GraphQLInt },
+  }),
+});
+
+const updateMemberTypeTypeDto = new GraphQLInputObjectType({
+  name: 'updateMemberTypeInputTypeDto',
+  fields: () => ({
     discount: { type: GraphQLInt },
     monthPostsLimit: { type: GraphQLInt },
   }),
@@ -37,4 +47,27 @@ const memberTypeQuery = {
   },
 };
 
-export { memberTypeType, memberTypesQuery, memberTypeQuery };
+const memberTypeUpdate = {
+  type: memberTypeType,
+  args: {
+    id: { type: new GraphQLNonNull(GraphQLString) },
+    data: {
+      type: updateMemberTypeTypeDto,
+    },
+  },
+  resolve: async (parent: any, args: any, context: any, info: any) => {
+    const { id, data } = args,
+      memberTypeToUpdate = await context.fastify.db.memberTypes.findOne({
+        key: 'id',
+        equals: id,
+      });
+
+    if (!memberTypeToUpdate) {
+      throw context.fastify.httpErrors.notFound();
+    }
+
+    return context.fastify.db.memberTypes.change(id, data);
+  },
+};
+
+export { memberTypeType, memberTypesQuery, memberTypeQuery, memberTypeUpdate };

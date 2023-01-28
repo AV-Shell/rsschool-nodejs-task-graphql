@@ -13,9 +13,14 @@ import {
   subscribeTo,
   unsubscribeFrom,
 } from './users';
-import { profilesQuery, profileQuery } from './profiles';
-import { postsQuery, postQuery } from './posts';
-import { memberTypesQuery, memberTypeQuery } from './memberTypes';
+import {
+  profilesQuery,
+  profileQuery,
+  profileCreate,
+  profileUpdate,
+} from './profiles';
+import { postsQuery, postQuery, postCreate, postUpdate } from './posts';
+import { memberTypesQuery, memberTypeQuery, memberTypeUpdate } from './memberTypes';
 
 const DEPTH_LIMIT = 6;
 
@@ -40,6 +45,11 @@ const schema = new GraphQLSchema({
       updateUser: userUpdate,
       subscribeUserTo: subscribeTo,
       unsubscribeUserFrom: unsubscribeFrom,
+      createProfile: profileCreate,
+      updateProfile: profileUpdate,
+      createPost: postCreate,
+      updatePost: postUpdate,
+      updateMemberType: memberTypeUpdate,
     }),
   }),
 });
@@ -60,7 +70,9 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
       try {
         if (
           !isEmpty(
-            validate(schema, parse(request.body.query ?? ''), [depthLimit(DEPTH_LIMIT)])
+            validate(schema, parse(request.body.query ?? ''), [
+              depthLimit(DEPTH_LIMIT),
+            ])
           )
         ) {
           throw new Error();
