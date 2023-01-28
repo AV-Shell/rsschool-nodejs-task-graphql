@@ -24,7 +24,7 @@ const profileType = new GraphQLObjectType({
 const profilesQuery = {
   type: new GraphQLList(profileType),
   resolve: async (parent: any, args: any, context: any, info: any) => {
-    return await context.db.profiles.findMany();
+    return await context.fastify.db.profiles.findMany();
   },
 };
 
@@ -32,7 +32,7 @@ const profileQuery = {
   type: profileType,
   args: { id: { type: GraphQLString } },
   resolve: async (parent: any, args: any, context: any, info: any) => {
-    return await context.db.profiles.findOne({
+    return await context.fastify.db.profiles.findOne({
       key: 'id',
       equals: args.id,
     });

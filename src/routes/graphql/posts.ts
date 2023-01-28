@@ -18,7 +18,7 @@ const postType = new GraphQLObjectType({
 const postsQuery = {
   type: new GraphQLList(postType),
   resolve: async (parent: any, args: any, context: any, info: any) => {
-    return await context.db.posts.findMany();
+    return await context.fastify.db.posts.findMany();
   },
 };
 
@@ -26,7 +26,7 @@ const postQuery = {
   type: postType,
   args: { id: { type: GraphQLString } },
   resolve: async (parent: any, args: any, context: any, info: any) => {
-    const p = await context.db.posts.findOne({
+    const p = await context.fastify.db.posts.findOne({
       key: 'id',
       equals: args.id,
     });
@@ -34,7 +34,7 @@ const postQuery = {
     if (p) {
       return p;
     }
-    throw context.httpErrors.notFound();
+    throw context.fastify.httpErrors.notFound();
   },
 };
 

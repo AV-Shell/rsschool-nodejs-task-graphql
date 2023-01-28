@@ -17,7 +17,7 @@ const memberTypeType = new GraphQLObjectType({
 const memberTypesQuery = {
   type: new GraphQLList(memberTypeType),
   resolve: async (parent: any, args: any, context: any, info: any) => {
-    return await context.db.memberTypes.findMany();
+    return await context.fastify.db.memberTypes.findMany();
   },
 };
 
@@ -25,7 +25,7 @@ const memberTypeQuery = {
   type: memberTypeType,
   args: { id: { type: GraphQLString } },
   resolve: async (parent: any, args: any, context: any, info: any) => {
-    const mte = await context.db.memberTypes.findOne({
+    const mte = await context.fastify.db.memberTypes.findOne({
       key: 'id',
       equals: args.id,
     });
@@ -33,7 +33,7 @@ const memberTypeQuery = {
     if (mte) {
       return mte;
     }
-    throw context.httpErrors.notFound();
+    throw context.fastify.httpErrors.notFound();
   },
 };
 
