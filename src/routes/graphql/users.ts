@@ -9,7 +9,7 @@ import { postType } from './posts';
 import { profileType } from './profiles';
 import { memberTypeType } from './memberTypes';
 
-const userType = new GraphQLObjectType({
+const userType: any = new GraphQLObjectType({
   name: 'user',
   fields: () => ({
     id: { type: GraphQLID },
@@ -40,9 +40,9 @@ const userType = new GraphQLObjectType({
       type: memberTypeType,
       resolve: async (parent: any, args: any, context: any, info: any) => {
         const userProfile = await context.db.profiles.findOne({
-            key: 'userId',
-            equals: parent.id,
-          });
+          key: 'userId',
+          equals: parent.id,
+        });
 
         if (!userProfile) {
           return null;
@@ -51,6 +51,24 @@ const userType = new GraphQLObjectType({
         return await context.db.memberTypes.findOne({
           key: 'id',
           equals: userProfile.memberTypeId,
+        });
+      },
+    },
+    userSubscribedTo: {
+      type: new GraphQLList(userType),
+      resolve: async (parent: any, args: any, context: any, info: any) => {
+        return context.db.users.findMany({
+          key: 'subscribedToUserIds',
+          inArray: parent.id,
+        });
+      },
+    },
+    subscribedToUser: {
+      type: new GraphQLList(userType),
+      resolve: async (parent: any, args: any, context: any, info: any) => {
+        return context.db.users.findMany({
+          key: 'id',
+          equalsAnyOf: parent.subscribedToUserIds,
         });
       },
     },
