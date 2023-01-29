@@ -7,6 +7,7 @@ import {
   GraphQLNonNull,
 } from 'graphql';
 import { includes, keyBy, filter } from 'lodash';
+import * as DataLoader from 'dataloader';
 
 import { postType } from './posts';
 import { profileType } from './profiles';
@@ -23,56 +24,179 @@ const userType: any = new GraphQLObjectType({
     posts: {
       type: new GraphQLList(postType),
       resolve: async (parent: any, args: any, context: any, info: any) => {
-        const posts = await context.fastify.db.posts.findMany({
-          key: 'userId',
-          equals: parent.id,
-        });
-        return posts;
+        const { dataloaders, fastify } = context;
+
+        let dl = dataloaders.get(info.fieldNodes);
+
+        if (!dl) {
+          dl = new DataLoader(async (ids: any) => {
+            const rows: any = await fastify.db.posts.findMany({
+              key: 'userId',
+              equalsAnyOf: ids,
+            });
+
+            const sortedInIdsOrder = ids.map((id: any) =>
+              rows.filter((x: { userId: any }) => x.userId === id)
+            );
+            return sortedInIdsOrder;
+          });
+          dataloaders.set(info.fieldNodes, dl);
+        }
+
+        return dl.load(parent.id);
+
+        // const posts = await context.fastify.db.posts.findMany({
+        //   key: 'userId',
+        //   equals: parent.id,
+        // });
+        // return posts;
       },
     },
     profile: {
       type: profileType,
       resolve: async (parent: any, args: any, context: any, info: any) => {
-        return context.fastify.db.profiles.findOne({
-          key: 'userId',
-          equals: parent.id,
-        });
+        const { dataloaders, fastify } = context;
+
+        let dl = dataloaders.get(info.fieldNodes);
+
+        if (!dl) {
+          dl = new DataLoader(async (ids: any) => {
+            const rows: any = await fastify.db.profiles.findMany({
+              key: 'userId',
+              equalsAnyOf: ids,
+            });
+
+            const sortedInIdsOrder = ids.map(
+              (parentId: any) =>
+                rows.find(
+                  (prof: { userId: any }) => prof.userId === parentId
+                ) ?? null
+            );
+            return sortedInIdsOrder;
+          });
+          dataloaders.set(info.fieldNodes, dl);
+        }
+
+        return dl.load(parent.id);
+
+        // return fastify.db.profiles.findOne({
+        //   key: 'userId',
+        //   equals: parent.id,
+        // });
       },
     },
     memberType: {
       type: memberTypeType,
       resolve: async (parent: any, args: any, context: any, info: any) => {
-        const userProfile = await context.fastify.db.profiles.findOne({
-          key: 'userId',
-          equals: parent.id,
-        });
+        const { dataloaders, fastify } = context;
 
-        if (!userProfile) {
-          return null;
+        let dl = dataloaders.get(info.fieldNodes);
+
+        if (!dl) {
+          dl = new DataLoader(async (ids: any) => {
+            const rows: any = await fastify.db.profiles.findMany({
+              key: 'userId',
+              equalsAnyOf: ids,
+            });
+
+            const mmT = await fastify.db.memberTypes.findMany();
+
+            const sortedInIdsOrder = ids.map((parentId: any) => {
+              const userProfile = rows.find(
+                (prof: { userId: any }) => prof.userId === parentId
+              );
+
+              if (!userProfile) {
+                return null;
+              }
+              return (
+                mmT.find((x: any) => x.id === userProfile.memberTypeId) ?? null
+              );
+            });
+            return sortedInIdsOrder;
+          });
+          dataloaders.set(info.fieldNodes, dl);
         }
 
-        return await context.fastify.db.memberTypes.findOne({
-          key: 'id',
-          equals: userProfile.memberTypeId,
-        });
+        return dl.load(parent.id);
+
+        // const userProfile = await context.fastify.db.profiles.findOne({
+        //   key: 'userId',
+        //   equals: parent.id,
+        // });
+
+        // if (!userProfile) {
+        //   return null;
+        // }
+
+        // return await context.fastify.db.memberTypes.findOne({
+        //   key: 'id',
+        //   equals: userProfile.memberTypeId,
+        // });
       },
     },
     userSubscribedTo: {
       type: new GraphQLList(userType),
       resolve: async (parent: any, args: any, context: any, info: any) => {
-        return context.fastify.db.users.findMany({
-          key: 'subscribedToUserIds',
-          inArray: parent.id,
-        });
+        // return context.fastify.db.users.findMany({
+        //   key: 'subscribedToUserIds',
+        //   inArray: parent.id,
+        // });
+        const { dataloaders, fastify } = context;
+
+        let dl = dataloaders.get(info.fieldNodes);
+
+        if (!dl) {
+          dl = new DataLoader(async (ids: any) => {
+            const rows: any = await fastify.db.users.findMany({
+              key: 'subscribedToUserIds',
+              inArrayAnyOf: ids,
+            });
+
+            const sortedInIdsOrder = ids.map((id: any) => {
+              return filter(rows, (user: any) =>
+                includes(user.subscribedToUserIds, id)
+              );
+            });
+            return sortedInIdsOrder;
+          });
+          dataloaders.set(info.fieldNodes, dl);
+        }
+        return dl.load(parent.id);
       },
     },
     subscribedToUser: {
       type: new GraphQLList(userType),
       resolve: async (parent: any, args: any, context: any, info: any) => {
-        return context.fastify.db.users.findMany({
-          key: 'id',
-          equalsAnyOf: parent.subscribedToUserIds,
-        });
+        // return context.fastify.db.users.findMany({
+        //   key: 'id',
+        //   equalsAnyOf: parent.subscribedToUserIds,
+        // });
+        const { dataloaders, fastify } = context;
+
+        let dl = dataloaders.get(info.fieldNodes);
+
+        if (!dl) {
+          dl = new DataLoader(async (ids: any) => {
+            const rows: any = await fastify.db.users.findMany({
+              key: 'id',
+              equalsAnyOf: ids,
+            });
+
+            const sortedInIdsOrder = ids.map(
+              (subId: any) =>
+                rows.find((user: any) => user.id === subId) ?? null
+            );
+            return sortedInIdsOrder;
+          });
+          dataloaders.set(info.fieldNodes, dl);
+        }
+
+        return dl.loadMany(parent.subscribedToUserIds);
+
+        // return Promise.allSettled(
+        //   map(parent.subscribedToUserIds, (id) => dl.load(id))
+        // );
       },
     },
   }),
