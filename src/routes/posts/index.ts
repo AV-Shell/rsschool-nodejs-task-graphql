@@ -2,11 +2,14 @@ import { FastifyPluginAsyncJsonSchemaToTs } from '@fastify/type-provider-json-sc
 import { idParamSchema } from '../../utils/reusedSchemas';
 import { createPostBodySchema, changePostBodySchema } from './schema';
 import type { PostEntity } from '../../utils/DB/entities/DBPosts';
+import { checkIsValidUUID } from '../../utils/checkIsValidUUID';
 
 const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
   fastify
 ): Promise<void> => {
-  fastify.get('/', async function (request, reply): Promise<PostEntity[]> {});
+  fastify.get('/', async function (req, rep): Promise<PostEntity[]> {
+    return await fastify.db.posts.findMany();
+  });
 
   fastify.get(
     '/:id',
@@ -15,7 +18,18 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
         params: idParamSchema,
       },
     },
-    async function (request, reply): Promise<PostEntity> {}
+    async function (req, rep): Promise<PostEntity> {
+
+      const p = await fastify.db.posts.findOne({
+        key: 'id',
+        equals: req.params.id,
+      });
+
+      if (p) {
+        return p;
+      }
+      throw fastify.httpErrors.notFound();
+    }
   );
 
   fastify.post(
@@ -25,7 +39,9 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
         body: createPostBodySchema,
       },
     },
-    async function (request, reply): Promise<PostEntity> {}
+    async function (req, rep): Promise<PostEntity> {
+      return await fastify.db.posts.create(req.body);
+    }
   );
 
   fastify.delete(
@@ -35,7 +51,13 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
         params: idParamSchema,
       },
     },
-    async function (request, reply): Promise<PostEntity> {}
+    async function (req, rep): Promise<PostEntity> {
+      if (!checkIsValidUUID(req?.params?.id)) {
+        throw fastify.httpErrors.badRequest();
+      }
+
+      return await fastify.db.posts.delete(req?.params?.id);
+    }
   );
 
   fastify.patch(
@@ -46,7 +68,21 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
         params: idParamSchema,
       },
     },
-    async function (request, reply): Promise<PostEntity> {}
+    async function (req, rep): Promise<PostEntity> {
+      if (!checkIsValidUUID(req?.params?.id)) {
+        throw fastify.httpErrors.badRequest();
+      }
+      
+      const p = await fastify.db.posts.findOne({
+        key: 'id',
+        equals: req.params.id,
+      });
+
+      if (p) {
+        return fastify.db.posts.change(req.params.id, req.body);
+      }
+      throw fastify.httpErrors.notFound();
+    }
   );
 };
 
